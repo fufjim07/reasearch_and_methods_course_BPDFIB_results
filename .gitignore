@@ -1,0 +1,16 @@
+# Python bytecode (קבצים זמניים שפייתון מייצרת כשהיא מריצה קוד)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# סביבות וירטואליות (אם תשתמשי בהן בהמשך)
+venv/
+.venv/
+env/
+
+# הגדרות מקומיות של VS Code
+.vscode/
+
+# קבצי מערכת הפעלה זמניים
+.DS_Store
+Thumbs.db
