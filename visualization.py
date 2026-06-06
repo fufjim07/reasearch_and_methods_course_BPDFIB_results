@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 from scipy.stats import fisher_exact
 from matplotlib.ticker import PercentFormatter
@@ -8,7 +9,10 @@ from matplotlib.ticker import PercentFormatter
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
-from synthetic_date import data
+from regression import data, model
+
+
+IMAGE_OUTPUT_DIR = "images"
 
 
 # -------------------------
@@ -45,14 +49,6 @@ model = smf.glm(
     data=data,
     family=sm.families.Binomial()
 ).fit()
-
-print("\nLogistic regression summary:")
-print(model.summary())
-
-print("\nLogistic regression p-values:")
-print("BPD group p-value:", round(model.pvalues["bpd_dummy"], 4))
-print("Gender p-value:", round(model.pvalues["female_dummy"], 4))
-print("Age p-value:", round(model.pvalues["age"], 4))
 
 
 # -------------------------
@@ -136,7 +132,8 @@ def plot_fm_prevalence_bar(
     colors,
     title,
     xlabel,
-    filename=None
+    filename=None,
+    show_plot=True
 ):
     """
     Create a bar chart of FM diagnosis prevalence by a categorical variable.
@@ -241,7 +238,10 @@ def plot_fm_prevalence_bar(
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches="tight")
 
-    plt.show()
+    if show_plot:
+        plt.show()
+    else:
+        plt.close(fig)
 
     # Print numerical summary
     print(f"\n{title}")
@@ -251,79 +251,83 @@ def plot_fm_prevalence_bar(
     return summary, p_value
 
 
-# -------------------------
-# Graph 1: Main hypothesis - FM diagnosis by group
-# -------------------------
+def run_prevalence_visualizations(show_plots=True):
+    """
+    Create and print summaries for the unadjusted FM prevalence visualizations.
+    """
 
-group_summary, group_p = plot_fm_prevalence_bar(
-    data=data,
-    group_col="group",
-    outcome_col="fm_diagnosis",
-    order=["Control", "BPD"],
-    colors=["#8FB3FF", "#D9487F"],
-    title="Prevalence of FM diagnosis by group",
-    xlabel="Study group",
-    filename="fm_prevalence_by_group.png"
-)
+    print("\nLogistic regression p-values:")
+    print("BPD group p-value:", round(model.pvalues["bpd_dummy"], 4))
+    print("Gender p-value:", round(model.pvalues["female_dummy"], 4))
+    print("Age p-value:", round(model.pvalues["age"], 4))
+    image_output_path = Path(IMAGE_OUTPUT_DIR)
+    image_output_path.mkdir(exist_ok=True)
+
+    group_summary, group_p = plot_fm_prevalence_bar(
+        data=data,
+        group_col="group",
+        outcome_col="fm_diagnosis",
+        order=["Control", "BPD"],
+        colors=["#8FB3FF", "#D9487F"],
+        title="Prevalence of FM diagnosis by group",
+        xlabel="Study group",
+        filename=image_output_path / "fm_prevalence_by_group.png",
+        show_plot=show_plots
+    )
+
+    gender_summary, gender_p = plot_fm_prevalence_bar(
+        data=data,
+        group_col="gender",
+        outcome_col="fm_diagnosis",
+        order=["Male", "Female"],
+        colors=["#4C78A8", "#F08AA5"],
+        title="Prevalence of FM diagnosis by gender",
+        xlabel="Gender",
+        filename=image_output_path / "fm_prevalence_by_gender.png",
+        show_plot=show_plots
+    )
+
+    print("\nFM diagnosis percentages by group:")
+    fm_by_group = pd.crosstab(
+        data["group"],
+        data["fm_diagnosis"],
+        normalize="index"
+    ) * 100
+
+    fm_by_group = fm_by_group.rename(columns={0: "No FM", 1: "FM"})
+    print(fm_by_group.round(2))
+
+    print("\nFM diagnosis percentages by gender:")
+    fm_by_gender = pd.crosstab(
+        data["gender"],
+        data["fm_diagnosis"],
+        normalize="index"
+    ) * 100
+
+    fm_by_gender = fm_by_gender.rename(columns={0: "No FM", 1: "FM"})
+    print(fm_by_gender.round(2))
+
+    print("\nInterpretation of gender effect:")
+    print(f"Unadjusted Fisher p-value for gender: {gender_p:.4f}")
+    print(f"Adjusted logistic regression p-value for gender: {model.pvalues['female_dummy']:.4f}")
+
+    if gender_p < 0.05:
+        print("In the unadjusted Fisher test, gender is significantly associated with FM diagnosis.")
+    else:
+        print("In the unadjusted Fisher test, gender is not significantly associated with FM diagnosis.")
+
+    if model.pvalues["female_dummy"] < 0.05:
+        print("In the logistic regression model, gender is a significant predictor of FM diagnosis after controlling for BPD group and age.")
+    else:
+        print("In the logistic regression model, gender is not a significant predictor of FM diagnosis after controlling for BPD group and age.")
+
+    return {
+        "group_summary": group_summary,
+        "group_p": group_p,
+        "gender_summary": gender_summary,
+        "gender_p": gender_p
+    }
 
 
-# -------------------------
-# Graph 2: Additional finding - FM diagnosis by gender
-# -------------------------
-
-gender_summary, gender_p = plot_fm_prevalence_bar(
-    data=data,
-    group_col="gender",
-    outcome_col="fm_diagnosis",
-    order=["Male", "Female"],
-    colors=["#4C78A8", "#F08AA5"],
-    title="Prevalence of FM diagnosis by gender",
-    xlabel="Gender",
-    filename="fm_prevalence_by_gender.png"
-)
-
-
-# -------------------------
-# Print simple percentage tables
-# -------------------------
-
-print("\nFM diagnosis percentages by group:")
-fm_by_group = pd.crosstab(
-    data["group"],
-    data["fm_diagnosis"],
-    normalize="index"
-) * 100
-
-fm_by_group = fm_by_group.rename(columns={0: "No FM", 1: "FM"})
-print(fm_by_group.round(2))
-
-
-print("\nFM diagnosis percentages by gender:")
-fm_by_gender = pd.crosstab(
-    data["gender"],
-    data["fm_diagnosis"],
-    normalize="index"
-) * 100
-
-fm_by_gender = fm_by_gender.rename(columns={0: "No FM", 1: "FM"})
-print(fm_by_gender.round(2))
-
-
-# -------------------------
-# Clear interpretation of gender significance
-# -------------------------
-
-print("\nInterpretation of gender effect:")
-
-print(f"Unadjusted Fisher p-value for gender: {gender_p:.4f}")
-print(f"Adjusted logistic regression p-value for gender: {model.pvalues['female_dummy']:.4f}")
-
-if gender_p < 0.05:
-    print("In the unadjusted Fisher test, gender is significantly associated with FM diagnosis.")
-else:
-    print("In the unadjusted Fisher test, gender is not significantly associated with FM diagnosis.")
-
-if model.pvalues["female_dummy"] < 0.05:
-    print("In the logistic regression model, gender is a significant predictor of FM diagnosis after controlling for BPD group and age.")
-else:
-    print("In the logistic regression model, gender is not a significant predictor of FM diagnosis after controlling for BPD group and age.")
+if __name__ == "__main__":
+    run_prevalence_visualizations(show_plots=True)

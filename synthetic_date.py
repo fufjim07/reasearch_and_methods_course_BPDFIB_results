@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 np.random.seed(42) # For reproducibility of the synthetic dataset
 
@@ -275,8 +276,6 @@ fm_by_group = pd.crosstab(
 
 fm_by_group = fm_by_group.rename(columns={0: "No FM", 1: "FM"})
 
-print("FM diagnosis percentages by group:")
-print(fm_by_group)
 
 # FM diagnosis percentages by gender
 fm_by_gender = pd.crosstab(
@@ -287,28 +286,46 @@ fm_by_gender = pd.crosstab(
 
 fm_by_gender = fm_by_gender.rename(columns={0: "No FM", 1: "FM"})
 
-print("FM diagnosis percentages by gender:")
-print(fm_by_gender)
 
-#check correlation between WPI total and SSS total
-correlation = data["wpi_total"].corr(data["sss_total"])
-print(f"Correlation between WPI total and SSS total: {correlation:.2f}")
+def print_synthetic_data_checks():
+    """
+    Print basic checks for the synthetic dataset.
+    """
 
-#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total
-print("Descriptive statistics:")
-print(data[["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
+    print("FM diagnosis percentages by group:")
+    print(fm_by_group.round(2))
 
-#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total for BPD group
-print("Descriptive statistics for BPD group:")
-print(data[data["group"] == "BPD"][["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
+    print("\nFM diagnosis percentages by gender:")
+    print(fm_by_gender.round(2))
 
-#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total for control group
-print("Descriptive statistics for control group:")
-print(data[data["group"] == "Control"][["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
+    correlation = data["wpi_total"].corr(data["sss_total"])
+    print(f"\nCorrelation between WPI total and SSS total: {correlation:.2f}")
+
+    variables = ["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]
+
+    print("\nDescriptive statistics:")
+    print(data[variables].describe())
+
+    print("\nDescriptive statistics for BPD group:")
+    print(data[data["group"] == "BPD"][variables].describe())
+
+    print("\nDescriptive statistics for control group:")
+    print(data[data["group"] == "Control"][variables].describe())
 
 
+def save_synthetic_dataset(filename="synthetic_fm_bpd_dataset.csv", output_dir="csv_files"):
+    """
+    Save the synthetic dataset to a CSV file.
+    """
+
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+    data.to_csv(output_path / filename, index=False)
 
 
+if __name__ == "__main__":
+    print_synthetic_data_checks()
+    save_synthetic_dataset()
 
 
 
