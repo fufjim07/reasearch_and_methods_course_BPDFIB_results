@@ -30,12 +30,17 @@ gender = np.concatenate([gender_bpd, gender_control])
 
 # Step 6: Create age for the BPD group.
 # Ages are generated within the eligible age range of 18 to 65.
-age_bpd = np.random.normal(loc=30, scale=5, size=n_per_group).astype(int)
+# Create age for the BPD group with a broad adult age range.
+age_bpd = np.concatenate([
+    np.random.normal(loc=25, scale=4, size=25),
+    np.random.normal(loc=38, scale=5, size=25),
+    np.random.normal(loc=55, scale=5, size=10)
+]).astype(int)
 age_bpd = np.clip(age_bpd, 18, 65)
 
 # Step 7: Match age in the control group.
 # Control ages are generated to be very similar to the BPD participants' ages.
-age_control = age_bpd + np.random.randint(-2, 3, size=n_per_group)
+age_control = age_bpd + np.random.randint(-3, 4, size=n_per_group)
 age_control = np.clip(age_control, 18, 65)
 
 # Step 8: Combine age for both groups.
@@ -50,16 +55,16 @@ max_education_control = age_control - 6
 # Education years for BPD group
 education_bpd = np.random.normal(loc=14.5, scale=2, size=n_per_group)
 education_bpd = np.round(education_bpd).astype(int)
-education_bpd = np.clip(education_bpd, 10, 22)
+education_bpd = np.clip(education_bpd, 12, 20)
 education_bpd = np.minimum(education_bpd, max_education_bpd)
-education_bpd = np.clip(education_bpd, 10, 22)
+education_bpd = np.clip(education_bpd, 12, 20)
 
 # Education years for control group, NOT matched to BPD group
 education_control = np.random.normal(loc=14.5, scale=2, size=n_per_group)
 education_control = np.round(education_control).astype(int)
-education_control = np.clip(education_control, 10, 22)
+education_control = np.clip(education_control, 12, 20)
 education_control = np.minimum(education_control, max_education_control)
-education_control = np.clip(education_control, 10, 22)
+education_control = np.clip(education_control, 12, 20)
 
 # Combine education years
 education_years = np.concatenate([education_bpd, education_control])
@@ -73,7 +78,6 @@ data = pd.DataFrame({
     'education_years': education_years
 })
 
-print(data.head())
 
 """PART 2: MSI-BPD Screening Score:
 The BPD diagnosis is based on the MSI-BPD, which includes 10 items assessing BPD symptoms.
@@ -113,16 +117,7 @@ data['msi_bpd_total'] = msi_bpd_total
 # Classify positive BPD screening.
 data['bpd_screen_positive'] = (data['msi_bpd_total'] >= 7).astype(int)
 
-# Check if the data looks correct.
-print(data.head())
 
-print(data.groupby('group')['msi_bpd_total'].describe())
-
-print(pd.crosstab(
-    data['group'],
-    data['bpd_screen_positive'],
-    normalize='index'
-) * 100)
 
 """PART 3: Fibromyalgia Diagnosis:
 Fibromyalgia is diagnosed based on the 2016 ACR criteria, which include:
@@ -168,8 +163,8 @@ def generate_wpi_items(data):
         # Base probability of pain
         probabilities = (
             0.14
-            + np.where(data["group"] == "BPD", 0.08, 0.00)
-            + np.where(data["gender"] == "Female", 0.07, 0.00)
+            + np.where(data["group"] == "BPD", 0.07, 0.00)
+            + np.where(data["gender"] == "Female", 0.05, 0.00)
             + 0.003 * (data["age"] - 30)
         )
         
@@ -202,8 +197,8 @@ The total SSS score ranges from 0 to 12.
 def generate_severity_item(data, base=0.5):
     latent_score = (
         base
-        + np.where(data["group"] == "BPD", 0.50, 0.00)
-        + np.where(data["gender"] == "Female", 0.20, 0.00)
+        + np.where(data["group"] == "BPD", 0.45, 0.00)
+        + np.where(data["gender"] == "Female", 0.15, 0.00)
         + 0.01 * (data["age"] - 30)
         + 0.08 * data["wpi_total"]
         + np.random.normal(0, 0.85, size=len(data))
@@ -271,18 +266,45 @@ data["fm_diagnosis"] = (
     ((data["wpi_total"].between(4, 6)) & (data["sss_total"] >= 9))
 ).astype(int)
 
-print(pd.crosstab(
+# FM diagnosis percentages by study group
+fm_by_group = pd.crosstab(
     data["group"],
     data["fm_diagnosis"],
     normalize="index"
-) * 100)
+) * 100
 
-#check correlations between WPI and SSS items
-print(f"Correlations between WPI and SSS items:\n{data[['wpi_total'] + sss_columns].corr()}")
-print(f"Data by group:\n{data.groupby('group')[['wpi_total'] + sss_columns].mean()}")
-print(f"Data by gender:\n{data.groupby('gender')[['wpi_total'] + sss_columns].mean()}")
+fm_by_group = fm_by_group.rename(columns={0: "No FM", 1: "FM"})
 
+print("FM diagnosis percentages by group:")
+print(fm_by_group)
 
+# FM diagnosis percentages by gender
+fm_by_gender = pd.crosstab(
+    data["gender"],
+    data["fm_diagnosis"],
+    normalize="index"
+) * 100
+
+fm_by_gender = fm_by_gender.rename(columns={0: "No FM", 1: "FM"})
+
+print("FM diagnosis percentages by gender:")
+print(fm_by_gender)
+
+#check correlation between WPI total and SSS total
+correlation = data["wpi_total"].corr(data["sss_total"])
+print(f"Correlation between WPI total and SSS total: {correlation:.2f}")
+
+#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total
+print("Descriptive statistics:")
+print(data[["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
+
+#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total for BPD group
+print("Descriptive statistics for BPD group:")
+print(data[data["group"] == "BPD"][["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
+
+#check min, max, mean, and std of age, education years, MSI-BPD total, WPI total, and SSS total for control group
+print("Descriptive statistics for control group:")
+print(data[data["group"] == "Control"][["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]].describe())
 
 
 
