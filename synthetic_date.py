@@ -199,7 +199,7 @@ def generate_severity_item(data, base=0.5):
         base
         + np.where(data["group"] == "BPD", 0.45, 0.00)
         + np.where(data["gender"] == "Female", 0.15, 0.00)
-        + 0.01 * (data["age"] - 30)
+        + 0.005 * (data["age"] - 30)
         + 0.08 * data["wpi_total"]
         + np.random.normal(0, 0.85, size=len(data))
     )

@@ -157,10 +157,3 @@ print(f"Nagelkerke R2 = {r2_nagelkerke:.3f}")
 
 fm_rates = data.groupby("group")["fm_diagnosis"].mean() * 100
 
-plt.figure(figsize=(6, 4))
-plt.bar(fm_rates.index, fm_rates.values)
-plt.ylabel("FM diagnosis (%)")
-plt.xlabel("Group")
-plt.title("Percentage of FM diagnosis by group")
-plt.ylim(0, 100)
-plt.show()

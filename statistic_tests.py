@@ -3,11 +3,6 @@ import pandas as pd
 from scipy.stats import chi2_contingency, ttest_ind
 from synthetic_date import data, sss_columns
 
-
-# Create dummy variables for group and gender for logistic regression
-data["bpd_dummy"] = (data["group"] == "BPD").astype(int)
-data["female_dummy"] = (data["gender"] == "Female").astype(int)
-
 # Descriptive statistics for continuous variables by group
 descriptive_by_group = data.groupby("group")[
     ["age", "education_years", "msi_bpd_total", "wpi_total", "sss_total"]
