@@ -256,7 +256,7 @@ def save_results_tables_png(output_dir=IMAGE_OUTPUT_DIR):
 
     save_academic_table_png(
         table=logistic_table,
-        title="Table 2. Logistic Regression Predicting FM Diagnosis",
+        title="Table 3. Logistic Regression Predicting FM Diagnosis",
         note="Note. OR = odds ratio; CI = confidence interval. df = 1 for each predictor.",
         filename=output_path / "logistic_regression_table.png",
         col_widths=[0.24, 0.09, 0.09, 0.09, 0.07, 0.10, 0.13, 0.19]
@@ -302,7 +302,7 @@ def print_results_tables(save=True):
     print(descriptives_table.to_string(index=False))
     print("Note. Values are presented as M (SD) for continuous variables and n (%) for categorical variables.")
 
-    print("\nTABLE 2")
+    print("\nTABLE 3")
     print("Logistic Regression Predicting FM Diagnosis")
     print(logistic_table.to_string(index=False))
     print("Note. OR = odds ratio; CI = confidence interval. df = 1 for each predictor.")

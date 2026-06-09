@@ -1,11 +1,8 @@
 import pandas as pd
 import numpy as np
-
 from scipy.stats import chi2_contingency, ttest_ind, pearsonr, fisher_exact
 import statsmodels.formula.api as smf
-
 from synthetic_date import data as raw_data, sss_columns
-
 
 # -------------------------
 # 0. Prepare data
