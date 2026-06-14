@@ -111,6 +111,37 @@ def create_descriptives_table(data):
     return pd.DataFrame(rows)
 
 
+def create_additional_descriptives_table(data):
+    """
+    Create an additional descriptive statistics table by study group.
+    """
+
+    rows = []
+    group_order = ["BPD", "Control"]
+
+    def group_value(group_name, value_function):
+        group_data = data[data["group"] == group_name]
+        return value_function(group_data)
+
+    rows.append({
+        "Variable": "Education years, M (SD)",
+        **{
+            group_name: group_value(group_name, lambda group_data: format_mean_sd(group_data["education_years"]))
+            for group_name in group_order
+        }
+    })
+
+    rows.append({
+        "Variable": "MSI-BPD total, M (SD)",
+        **{
+            group_name: group_value(group_name, lambda group_data: format_mean_sd(group_data["msi_bpd_total"]))
+            for group_name in group_order
+        }
+    })
+
+    return pd.DataFrame(rows)
+
+
 def create_logistic_regression_table(model):
     """
     Create a logistic regression results table for the main predictors.
@@ -242,6 +273,7 @@ def save_results_tables_png(output_dir=IMAGE_OUTPUT_DIR):
     """
 
     descriptives_table = create_descriptives_table(data)
+    additional_descriptives_table = create_additional_descriptives_table(data)
     logistic_table = create_logistic_regression_table(model)
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
@@ -255,6 +287,14 @@ def save_results_tables_png(output_dir=IMAGE_OUTPUT_DIR):
     )
 
     save_academic_table_png(
+        table=additional_descriptives_table,
+        title="Table 1b. Additional Descriptive Statistics by Study Group",
+        note="Note. Values are presented as M (SD).",
+        filename=output_path / "additional_descriptives_table.png",
+        col_widths=[0.42, 0.29, 0.29]
+    )
+
+    save_academic_table_png(
         table=logistic_table,
         title="Table 3. Logistic Regression Predicting FM Diagnosis",
         note="Note. OR = odds ratio; CI = confidence interval. df = 1 for each predictor.",
@@ -262,7 +302,7 @@ def save_results_tables_png(output_dir=IMAGE_OUTPUT_DIR):
         col_widths=[0.24, 0.09, 0.09, 0.09, 0.07, 0.10, 0.13, 0.19]
     )
 
-    return descriptives_table, logistic_table
+    return descriptives_table, additional_descriptives_table, logistic_table
 
 
 def save_results_tables(csv_output_dir=CSV_OUTPUT_DIR, image_output_dir=IMAGE_OUTPUT_DIR):
@@ -271,18 +311,20 @@ def save_results_tables(csv_output_dir=CSV_OUTPUT_DIR, image_output_dir=IMAGE_OU
     """
 
     descriptives_table = create_descriptives_table(data)
+    additional_descriptives_table = create_additional_descriptives_table(data)
     logistic_table = create_logistic_regression_table(model)
     model_fit_table = create_model_fit_table(model_stats)
     csv_output_path = Path(csv_output_dir)
     csv_output_path.mkdir(exist_ok=True)
 
     descriptives_table.to_csv(csv_output_path / "descriptives_table.csv", index=False)
+    additional_descriptives_table.to_csv(csv_output_path / "additional_descriptives_table.csv", index=False)
     logistic_table.to_csv(csv_output_path / "logistic_regression_table.csv", index=False)
     model_fit_table.to_csv(csv_output_path / "logistic_model_fit_table.csv", index=False)
 
     save_results_tables_png(output_dir=image_output_dir)
 
-    return descriptives_table, logistic_table, model_fit_table
+    return descriptives_table, additional_descriptives_table, logistic_table, model_fit_table
 
 
 def print_results_tables(save=True):
@@ -291,9 +333,10 @@ def print_results_tables(save=True):
     """
 
     if save:
-        descriptives_table, logistic_table, model_fit_table = save_results_tables()
+        descriptives_table, additional_descriptives_table, logistic_table, model_fit_table = save_results_tables()
     else:
         descriptives_table = create_descriptives_table(data)
+        additional_descriptives_table = create_additional_descriptives_table(data)
         logistic_table = create_logistic_regression_table(model)
         model_fit_table = create_model_fit_table(model_stats)
 
@@ -301,6 +344,11 @@ def print_results_tables(save=True):
     print("Descriptive Statistics by Study Group")
     print(descriptives_table.to_string(index=False))
     print("Note. Values are presented as M (SD) for continuous variables and n (%) for categorical variables.")
+
+    print("\nTABLE 1b")
+    print("Additional Descriptive Statistics by Study Group")
+    print(additional_descriptives_table.to_string(index=False))
+    print("Note. Values are presented as M (SD).")
 
     print("\nTABLE 3")
     print("Logistic Regression Predicting FM Diagnosis")
@@ -313,9 +361,11 @@ def print_results_tables(save=True):
     if save:
         print("\nSaved tables:")
         print(f"{CSV_OUTPUT_DIR}/descriptives_table.csv")
+        print(f"{CSV_OUTPUT_DIR}/additional_descriptives_table.csv")
         print(f"{CSV_OUTPUT_DIR}/logistic_regression_table.csv")
         print(f"{CSV_OUTPUT_DIR}/logistic_model_fit_table.csv")
         print(f"{IMAGE_OUTPUT_DIR}/descriptives_table.png")
+        print(f"{IMAGE_OUTPUT_DIR}/additional_descriptives_table.png")
         print(f"{IMAGE_OUTPUT_DIR}/logistic_regression_table.png")
 
 

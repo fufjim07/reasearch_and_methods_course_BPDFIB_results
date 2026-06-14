@@ -1,0 +1,6 @@
+﻿,Age,Education years,MSI-BPD,WPI,SSS
+Age,,,,,
+Education years,0.057,,,,
+MSI-BPD,0.994,0.104,,,
+WPI,< .001,0.007,< .001,,
+SSS,0.087,0.128,< .001,< .001,

@@ -24,6 +24,7 @@ def prepare_data(raw_data):
 
     # Recalculate SSS total from the SSS items
     data["sss_total"] = data[sss_columns].sum(axis=1)
+    data["acr_total"] = data["wpi_total"] + data["sss_total"]
 
     return data
 

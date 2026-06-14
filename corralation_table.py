@@ -1,4 +1,6 @@
 from pathlib import Path
+from xml.sax.saxutils import escape
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,6 +43,106 @@ def p_to_stars(p_value):
     if p_value < 0.05:
         return "*"
     return ""
+
+
+def dataframe_to_excel_rows(table):
+    """
+    Convert a dataframe with meaningful index labels into worksheet rows.
+    """
+
+    display_table = table.reset_index()
+    display_table.columns = ["Variable", *table.columns]
+    return [display_table.columns.tolist(), *display_table.fillna("").values.tolist()]
+
+
+def cell_to_xml(value):
+    """
+    Convert a Python value to a minimal XLSX cell representation.
+    """
+
+    if value == "":
+        return "<c/>"
+
+    if isinstance(value, (int, float, np.integer, np.floating)) and not pd.isna(value):
+        return f"<c><v>{value}</v></c>"
+
+    return f'<c t="inlineStr"><is><t>{escape(str(value))}</t></is></c>'
+
+
+def save_basic_xlsx(filename, sheets):
+    """
+    Save a small multi-sheet XLSX workbook without optional Excel dependencies.
+    """
+
+    sheet_relationships = []
+    workbook_sheets = []
+
+    for index, (sheet_name, rows) in enumerate(sheets, start=1):
+        sheet_relationships.append(
+            f'<Relationship Id="rId{index}" '
+            f'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+            f'Target="worksheets/sheet{index}.xml"/>'
+        )
+        workbook_sheets.append(
+            f'<sheet name="{escape(sheet_name)}" sheetId="{index}" r:id="rId{index}"/>'
+        )
+
+    content_types = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+        '<Default Extension="xml" ContentType="application/xml"/>',
+        '<Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+    ]
+    content_types.extend(
+        f'<Override PartName="/xl/worksheets/sheet{index}.xml" '
+        f'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        for index in range(1, len(sheets) + 1)
+    )
+    content_types.append("</Types>")
+
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        f"<sheets>{''.join(workbook_sheets)}</sheets>"
+        "</workbook>"
+    )
+
+    with ZipFile(filename, "w", ZIP_DEFLATED) as workbook:
+        workbook.writestr("[Content_Types].xml", "".join(content_types))
+        workbook.writestr(
+            "_rels/.rels",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" '
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+            'Target="xl/workbook.xml"/>'
+            "</Relationships>",
+        )
+        workbook.writestr("xl/workbook.xml", workbook_xml)
+        workbook.writestr(
+            "xl/_rels/workbook.xml.rels",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f"{''.join(sheet_relationships)}"
+            "</Relationships>",
+        )
+
+        for index, (_, rows) in enumerate(sheets, start=1):
+            sheet_rows = []
+            for row_number, row_values in enumerate(rows, start=1):
+                cells = "".join(cell_to_xml(value) for value in row_values)
+                sheet_rows.append(f'<row r="{row_number}">{cells}</row>')
+
+            sheet_xml = (
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                f"<sheetData>{''.join(sheet_rows)}</sheetData>"
+                "</worksheet>"
+            )
+            workbook.writestr(f"xl/worksheets/sheet{index}.xml", sheet_xml)
 
 
 def create_correlation_table(data, variables, labels):
@@ -184,7 +286,13 @@ def save_correlation_outputs(
             correlation_table.to_excel(writer, sheet_name="Correlation table")
             correlation_p_values.to_excel(writer, sheet_name="P values")
     except ModuleNotFoundError:
-        print("Skipped Excel export because openpyxl is not installed.")
+        save_basic_xlsx(
+            csv_output_dir / "table_2_correlations.xlsx",
+            sheets=[
+                ("Correlation table", dataframe_to_excel_rows(correlation_table)),
+                ("P values", dataframe_to_excel_rows(correlation_p_values)),
+            ],
+        )
 
     image_path = image_output_dir / "table_2_correlation_table.png"
     save_correlation_table_png(correlation_table, image_path)

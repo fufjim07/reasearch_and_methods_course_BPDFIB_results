@@ -262,6 +262,8 @@ data["sss_total"] = (
     + data["sss_depression"]
 )
 
+data["acr_total"] = data["wpi_total"] + data["sss_total"]
+
 data["fm_diagnosis"] = (
     ((data["wpi_total"] >= 7) & (data["sss_total"] >= 5)) |
     ((data["wpi_total"].between(4, 6)) & (data["sss_total"] >= 9))
